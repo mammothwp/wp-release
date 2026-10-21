@@ -24,13 +24,15 @@ class Builder
      * @param PluginReader    $reader    Plugin reader.
      * @param PluginValidator $validator Validator.
      * @param Filesystem      $fs        Filesystem helper.
+     * @param StageFiles      $stageFiles Decides which files are staged.
      */
     public function __construct(
         private readonly CommandRunner $runner,
         private readonly Reporter $reporter,
         private readonly PluginReader $reader = new PluginReader(),
         private readonly PluginValidator $validator = new PluginValidator(),
-        private readonly Filesystem $fs = new Filesystem()
+        private readonly Filesystem $fs = new Filesystem(),
+        private readonly StageFiles $stageFiles = new StageFiles()
     ) {
     }
 
@@ -64,7 +66,7 @@ class Builder
     }
 
     /**
-     * Copy the working tree to a temp dir, leaving out VCS data and installed dependencies.
+     * Copy the shipped files to a temp dir: tracked files in a git work tree, a filtered copy otherwise.
      *
      * @param Config $config Config.
      * @param string $stage  Temp dir.
@@ -72,12 +74,38 @@ class Builder
      */
     private function stage(Config $config, string $stage): void
     {
-        $excludes = ['/.git', '/node_modules', '/dist', '/.scratch', '/' . $config->slug . '.zip'];
-        if (is_file($config->path . '/composer.json')) {
-            $excludes[] = '/vendor';
+        $freshVendor = is_file($config->path . '/composer.json');
+        $files = $this->stageFiles->tracked($this->runner, $config->path);
+        if ($files === null) {
+            $this->stageWithoutGit($config, $stage, $freshVendor);
+            return;
         }
-        $command = ['rsync', '-a'];
-        foreach ($excludes as $exclude) {
+        $selected = $this->stageFiles->select($files, $config->slug, $freshVendor, $config->path);
+        $list = $stage . '.files';
+        file_put_contents($list, implode("\0", $selected));
+        try {
+            $this->runner->mustRun(['rsync', '-a', '--from0', '--files-from=' . $list, $config->path . '/', $stage . '/'], ExitCode::BUILD);
+        } finally {
+            $this->fs->remove($list);
+        }
+        // .distignore drives the next step even when it is not tracked.
+        $this->fs->copy($config->path . '/.distignore', $stage . '/.distignore', true);
+    }
+
+    /**
+     * Copy the whole working tree when there is no git, excluding dot-files, phars, caches and the tools dir.
+     *
+     * @param Config $config      Config.
+     * @param string $stage       Temp dir.
+     * @param bool   $freshVendor Whether vendor/ is rebuilt by composer.
+     * @return void
+     */
+    private function stageWithoutGit(Config $config, string $stage, bool $freshVendor): void
+    {
+        $env = getenv('MMWP_TOOLS_DIR');
+        $tools = $this->stageFiles->relativeToolsDir($env === false ? null : $env, $config->path);
+        $command = ['rsync', '-a', '--include=/.distignore'];
+        foreach ($this->stageFiles->fallbackExcludes($config->slug, $freshVendor, $tools) as $exclude) {
             $command[] = '--exclude=' . $exclude;
         }
         $this->runner->mustRun([...$command, $config->path . '/', $stage . '/'], ExitCode::BUILD);
@@ -181,12 +209,13 @@ class Builder
             static fn (string $path): string => str_starts_with($path, $prefix) ? substr($path, strlen($prefix)) : $path,
             $this->listZip($result->zipPath)
         );
-        $forbidden = (new ForbiddenFiles($config->excludes))->find($relative);
+        $finder = new ForbiddenFiles($config->excludes);
+        $forbidden = array_values(array_unique([...$finder->find($relative), ...$finder->findHiddenOrPhar($relative)]));
         if ($forbidden === []) {
             return;
         }
         $shown = implode("\n - ", array_slice($forbidden, 0, 20));
-        throw new ReleaseException("Forbidden files found in the zip (fix .distignore):\n - " . $shown, ExitCode::VALIDATION);
+        throw new ReleaseException("Forbidden files found in the zip (hidden files, phars or .distignore targets):\n - " . $shown, ExitCode::VALIDATION);
     }
 
     /**

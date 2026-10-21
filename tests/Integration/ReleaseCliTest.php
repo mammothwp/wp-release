@@ -81,6 +81,37 @@ final class ReleaseCliTest extends TestCase
     }
 
     /**
+     * Verifies: CI leftovers (composer cache, wp-cli.phar, tools dir, untracked files) never reach the zip and check passes.
+     * @return void
+     */
+    public function testBuildIgnoresSimulatedCiJunk(): void
+    {
+        $path = $this->copyFixture('mmwp-fixture-plugin');
+        foreach ([['init', '-q'], ['add', '-A'], ['-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-qm', 'init']] as $args) {
+            (new Process(['git', ...$args], $path))->mustRun();
+        }
+        mkdir($path . '/.cache/composer/files', 0777, true);
+        mkdir($path . '/.tools');
+        file_put_contents($path . '/.cache/composer/files/pkg.zip', 'x');
+        file_put_contents($path . '/.tools/wp-cli.phar', 'x');
+        file_put_contents($path . '/wp-cli.phar', 'x');
+        file_put_contents($path . '/untracked.txt', 'x');
+
+        $build = $this->cli(['build', '--format=json'], $path);
+        self::assertSame(ExitCode::SUCCESS, $build->getExitCode(), $build->getErrorOutput());
+        $list = new Process(['unzip', '-Z1', $path . '/mmwp-fixture-plugin.zip']);
+        $list->mustRun();
+        $entries = array_values(array_filter(explode("\n", $list->getOutput())));
+        sort($entries);
+        self::assertSame(['mmwp-fixture-plugin/', 'mmwp-fixture-plugin/mmwp-fixture-plugin.php', 'mmwp-fixture-plugin/readme.txt'], $entries);
+        $check = $this->cli(['check', '--strict', '--format=json'], $path);
+        $report = json_decode((string) file_get_contents($path . '/plugin-check.json'), true);
+        self::assertSame(0, $report['errors'], $check->getErrorOutput());
+        self::assertArrayNotHasKey('phar_files', $report['by_code']);
+        self::assertArrayNotHasKey('hidden_files', $report['by_code']);
+    }
+
+    /**
      * Verifies: strict mode fails on warnings.
      * @return void
      */
