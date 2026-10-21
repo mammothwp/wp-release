@@ -133,7 +133,17 @@ Precedence: CLI flag > `MMWP_*` environment > `mmwp-release.json` > auto-detecti
 - The zip contains no `.git`, `node_modules`, `tests`, `phpunit*`, `phpcs*`, `phpstan*`, `.gitlab-ci.yml`,
   `.wordpress-org`, `.env*`, `*.log`; `composer.lock` only if `vendor/` ships. Inside `vendor/` only the
   secret-like patterns apply (third-party packages legitimately ship tests).
+- Pre-flight (exit 11, offending paths listed, before Plugin Check): the zip contains no hidden file or directory at any
+  level (dot-files, dot-dirs, including inside `vendor/`) and no `*.phar`.
 - `.distignore` (rsync exclude syntax) is required and is itself never shipped.
+
+## What `build` copies
+
+In a git work tree `build` ships only **tracked** files (`git ls-files`), then applies `.distignore`, then adds the fresh
+no-dev `vendor/`. Untracked CI leftovers (`.cache/composer`, a downloaded `wp-cli.phar`, a tools dir, stray files) can
+never reach the zip, and `.distignore` does not need to know about CI internals. Without git, the whole tree is copied
+minus every dot-file/dot-dir, `*.phar`, `.cache/`, `node_modules`, `dist`, the zip itself and the directory named by
+`MMWP_TOOLS_DIR` (when inside the plugin root).
 
 ## Local usage (DDEV)
 

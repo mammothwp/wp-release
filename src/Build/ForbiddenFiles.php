@@ -46,6 +46,43 @@ final class ForbiddenFiles
     }
 
     /**
+     * Return the paths with a hidden segment (dot-file or dot-dir at any level) or a *.phar file name.
+     *
+     * @param list<string> $paths Paths relative to the plugin root (no slug prefix).
+     * @return list<string>
+     */
+    public function findHiddenOrPhar(array $paths): array
+    {
+        $found = [];
+        foreach ($paths as $path) {
+            $path = trim($path, '/');
+            if ($path !== '' && $this->isHiddenOrPhar($path)) {
+                $found[] = $path;
+            }
+        }
+        return $found;
+    }
+
+    /**
+     * Whether a path has a dot-prefixed segment or ends in .phar.
+     *
+     * @param string $path Relative path.
+     * @return bool
+     */
+    private function isHiddenOrPhar(string $path): bool
+    {
+        if (str_ends_with(strtolower($path), '.phar')) {
+            return true;
+        }
+        foreach (explode('/', $path) as $segment) {
+            if (str_starts_with($segment, '.')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Whether the file list contains a vendor directory.
      *
      * @param list<string> $paths Paths.
