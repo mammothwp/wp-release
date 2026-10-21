@@ -18,6 +18,8 @@ The package is published on Packagist as `dev-main` (no version tags) and mirror
 <https://github.com/mammothwp/wp-release>. Requires PHP >= 8.1 and these tools on `PATH`:
 `composer`, `rsync`, `zip`, `unzip` (build); `wp` (WP-CLI) and `curl` (check, HTTP); `svn` (deploy-wporg).
 For `check` with the default SQLite database PHP also needs `pdo_sqlite`.
+In GitLab CI everything runs on the `composer:2` image (Alpine) plus apk packages, e.g.
+`apk add --no-cache rsync zip unzip curl bash`, and `subversion` in the job that runs `deploy-wporg`.
 
 ## Commands
 
@@ -152,6 +154,7 @@ mmwp-release:
   stage: release
   rules: [{ if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH }]
   script:
+    - apk add --no-cache rsync zip unzip curl bash subversion
     - vendor/bin/mmwp-release deploy-wporg
     - vendor/bin/mmwp-release release-github
 ```

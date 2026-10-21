@@ -1,7 +1,7 @@
 # CI for mammothwp/wp-release itself. No release jobs here: the package is consumed from Packagist (dev-main).
 default:
   tags: [docker]
-  image: registry.gitlab.motivar.io/motivar/ci/unified:latest
+  image: composer:2
   cache:
     key: composer-$CI_COMMIT_REF_SLUG
     paths:
@@ -42,9 +42,18 @@ phpunit:
 
 # Runs build + check for real against the fixture plugins: needs wp-cli, rsync, zip, unzip, curl,
 # network access and PHP pdo_sqlite. Skips are failures here so a broken image cannot go green silently.
+# composer:2 is Alpine based, so the missing tools and PHP extensions are installed first.
 integration:
   stage: test
   before_script:
+    - apk add --no-cache rsync zip unzip curl bash
+    - |
+      if command -v install-php-extensions >/dev/null; then
+        install-php-extensions pdo_sqlite sqlite3 mysqli zip gd intl
+      else
+        apk add --no-cache $PHPIZE_DEPS sqlite-dev libzip-dev icu-dev libpng-dev
+        docker-php-ext-install pdo_sqlite sqlite3 mysqli zip gd intl
+      fi
     - *install
     - command -v wp >/dev/null || { curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x /usr/local/bin/wp; }
   script:

@@ -83,7 +83,7 @@ before commit; release-github prints the planned request.
 - Should `--force` ever allow re-release of an existing version? (Assumed no; WP.org tags are immutable by policy.)
 - GitHub repo name = slug under `mammothwp` (configurable). Confirm.
 - Packagist registration of `mammothwp/wp-release` and CI variables (`WPORG_USERNAME`, `WPORG_PASSWORD`, `GITHUB_TOKEN`) need the owner.
-- `svn` is not in the unified CI image? Assumed present; check/add.
+- CI image is `composer:2` (Alpine): tools via apk, extensions via install-php-extensions; deploy jobs must `apk add subversion`.
 - Final MR "TESTS: PASSED" requires svn-less environments to still pass: SVN logic is unit-tested with mocks.
 
 ## Implementation notes (post-build)

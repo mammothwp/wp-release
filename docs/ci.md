@@ -8,8 +8,14 @@ for the current version) and `release-github` (which uploads the zip) can run in
 
 ## Image requirements
 
-`php >= 8.1`, `composer`, `rsync`, `zip`, `unzip`, `curl`, `wp` (WP-CLI), `svn` (deploy only), and `pdo_sqlite` (check
-with SQLite). Use `MMWP_DB=mysql` with a MySQL service when `pdo_sqlite` is unavailable.
+Jobs run on the official `composer:2` image (Alpine, PHP >= 8.1) on the `docker` runner. Install what it lacks with apk:
+
+- build: `apk add --no-cache rsync zip unzip curl bash`
+- check: the same, plus PHP extensions `pdo_sqlite sqlite3 mysqli zip gd intl` (`install-php-extensions ...`, or
+  `docker-php-ext-install` as a fallback) and `wp` (WP-CLI phar from `https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar`)
+- deploy-wporg: also `apk add --no-cache subversion`
+
+Use `MMWP_DB=mysql` with a MySQL service when `pdo_sqlite` is unavailable.
 
 ## Secrets
 
