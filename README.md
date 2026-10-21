@@ -136,16 +136,19 @@ matters). The jobs boil down to:
 stages: [build, check, release]
 
 mmwp-build:
+  tags: [docker]
   stage: build
   script: [vendor/bin/mmwp-release build]
   artifacts: { paths: ["*.zip", "dist/"] }
 
 mmwp-check:
+  tags: [docker]
   stage: check
   script: [vendor/bin/mmwp-release check]
   artifacts: { when: always, paths: [plugin-check.json, plugin-check.txt] }
 
 mmwp-release:
+  tags: [docker]
   stage: release
   rules: [{ if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH }]
   script:

@@ -1,5 +1,11 @@
 # CI for mammothwp/wp-release itself. No release jobs here: the package is consumed from Packagist (dev-main).
-image: registry.gitlab.motivar.io/motivar/ci/unified:latest
+default:
+  tags: [docker]
+  image: registry.gitlab.motivar.io/motivar/ci/unified:latest
+  cache:
+    key: composer-$CI_COMMIT_REF_SLUG
+    paths:
+      - .composer-cache/
 
 workflow:
   rules:
@@ -12,11 +18,6 @@ stages:
 
 variables:
   COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
-
-cache:
-  key: composer-$CI_COMMIT_REF_SLUG
-  paths:
-    - .composer-cache/
 
 .install: &install
   - composer install --no-interaction --no-progress --prefer-dist
