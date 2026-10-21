@@ -1,0 +1,10 @@
+/.git
+/.gitlab-ci.yml
+/.wordpress-org
+/dist
+/*.zip
+/plugin-check.*
+/tests
+/node_modules
+.DS_Store
+*.log

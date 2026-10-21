@@ -1,93 +1,170 @@
-# WP release
+# mammothwp/wp-release
 
+Prepare, verify and ship a Mammoth WP plugin release to **wordpress.org** (SVN) and **GitHub Releases**.
+One PHP CLI, `mmwp-release`, that behaves identically in DDEV and in GitLab CI.
 
+**Release model: a version bump on `main` is the release.** There are no git tags. Every command compares the
+plugin's own `Version` header with what is already published and does nothing when it is already out, so the
+whole pipeline is safe to run on every push to `main`.
 
-## Getting started
+## Install
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.motivar.io/mammothwp/wp-release.git
-git branch -M main
-git push -uf origin main
+```bash
+composer require --dev mammothwp/wp-release
+vendor/bin/mmwp-release --help
 ```
 
-## Integrate with your tools
+The package is published on Packagist as `dev-main` (no version tags) and mirrored to
+<https://github.com/mammothwp/wp-release>. Requires PHP >= 8.1 and these tools on `PATH`:
+`composer`, `rsync`, `zip`, `unzip` (build); `wp` (WP-CLI) and `curl` (check, HTTP); `svn` (deploy-wporg).
+For `check` with the default SQLite database PHP also needs `pdo_sqlite`.
 
-* [Set up project integrations](https://gitlab.motivar.io/mammothwp/wp-release/-/settings/integrations)
+## Commands
 
-## Collaborate with your team
+All commands accept the global flags below. Results go to stdout (table or JSON); logs, including every
+external command that is run, go to stderr.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+| Command | What it does |
+|---|---|
+| `build` | Fresh `composer install --no-dev --optimize-autoloader` in a temp copy (the working tree's `vendor/` is never touched), requires `.distignore`, rsyncs to `dist/<slug>/`, zips to `<slug>.zip`, validates headers/readme/forbidden files, prints zip size and file count. |
+| `check` | Throwaway WordPress in a temp dir (SQLite drop-in, or MySQL), installs Plugin Check, unzips the **built** zip (builds first if the zip is missing or older than the sources), activates it, runs `wp plugin check`, writes `plugin-check.json` and `plugin-check.txt`, removes the site. Fails on any ERROR (and any WARNING with `--strict`). |
+| `deploy-wporg` | Needs a passing check. Skips (exit 0) if `tags/<version>` already exists on `plugins.svn.wordpress.org`, or if the plugin has no SVN repo yet. Otherwise syncs trunk (+ `.wordpress-org/` → assets), `svn cp trunk tags/<version>` and commits. |
+| `release-github` | Skips (exit 0) if release `v<version>` exists in `mammothwp/<slug>`. Otherwise creates it with the matching `readme.txt` changelog section as notes and uploads `<slug>.zip`. |
+| `status` | Prints slug, header version, readme Stable tag, whether the version exists on wordpress.org and GitHub, and what each deploy command would do. |
+| `all` | `build` → `check` → `deploy-wporg` → `release-github`, stopping at the first failure. |
 
-## Test and Deploy
+### Global flags
 
-Use the built-in continuous integration in GitLab.
+| Flag | Meaning |
+|---|---|
+| `--dry-run` | Publish nothing. `deploy-wporg` prints the `svn status` diff and stops before commit; `release-github` prints the planned release. |
+| `--debug-mode` | Verbose: stream command output, also print the Plugin Check table. |
+| `--force` | Skip the "passing check required" gate of `deploy-wporg`. Never overwrites a published version. |
+| `--path=<dir>` | Plugin repository root (default: current directory). |
+| `--format=table\|json` | Result format on stdout (default `table`). |
+| `--slug=<slug>` | Plugin slug (see configuration). |
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Command specific: `check` / `all`: `--strict`, `--self-test`, `--keep`, `--db=sqlite|mysql`;
+`deploy-wporg` / `all`: `--fail-if-unapproved`; `deploy-wporg`: `--strict`.
 
-***
+## Configuration
 
-# Editing this README
+Precedence: CLI flag > `MMWP_*` environment > `mmwp-release.json` > auto-detection.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+**Slug:** `--slug`, `MMWP_SLUG`, `slug` in `mmwp-release.json`, else the single root `*.php` file with a
+`Plugin Name:` header (file name without `.php`). The main file must be `<slug>.php`.
 
-## Suggestions for a good README
+**`mmwp-release.json`** (optional, plugin root):
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```json
+{
+  "slug": "my-plugin",
+  "php_min": "7.4",
+  "wp_version": "6.8",
+  "strict": false,
+  "excludes": ["*.psd", "docs/*"],
+  "github_repo": "my-plugin"
+}
+```
 
-## Name
-Choose a self-explaining name for your project.
+`php_min`: the `Requires PHP` header must be at least this. `wp_version`: WordPress version of the check site
+(overridden by `WP_VERSION`). `strict`: same as `MMWP_PCP_STRICT`. `excludes`: extra forbidden-file patterns
+(`fnmatch`, matched against each path and file name in the zip).
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Environment variables
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+| Variable | Used by | Meaning |
+|---|---|---|
+| `MMWP_SLUG` | all | Plugin slug. |
+| `MMWP_DEBUG` | all | `true` = same as `--debug-mode`. |
+| `MMWP_PCP_STRICT` | check, deploy-wporg | `true` = fail on Plugin Check warnings too. |
+| `MMWP_SELF_TEST` | check | `true` = same as `--self-test`. |
+| `MMWP_DB` | check | `sqlite` (default) or `mysql`. |
+| `MMWP_DB_HOST` / `MMWP_DB_USER` / `MMWP_DB_PASS` / `MMWP_DB_NAME` | check | MySQL connection (name defaults to a random `mmwp_check_*`, dropped afterwards). |
+| `MMWP_FAIL_IF_UNAPPROVED` | deploy-wporg | `true` = exit 32 instead of 0 when the plugin has no SVN repo yet. |
+| `MMWP_GITHUB_OWNER` | release-github, status | GitHub owner (default `mammothwp`). |
+| `MMWP_GITHUB_REPO` | release-github, status | GitHub repo (default: the slug). |
+| `WP_VERSION` | check | WordPress version, default latest. |
+| `WPORG_USERNAME` / `WPORG_PASSWORD` | deploy-wporg | SVN credentials. Masked in all output. |
+| `GITHUB_TOKEN` | release-github | Token with `contents: write` on the repo. Masked in all output. |
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Exit codes
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+| Code | Meaning |
+|---|---|
+| 0 | Success, **already released**, or **plugin not yet approved** (unless `--fail-if-unapproved`) |
+| 1 | Unexpected error |
+| 2 | Usage / configuration error (no slug, bad flag, missing `.distignore`, missing credentials) |
+| 3 | Required tool missing (`rsync`, `zip`, `svn`, ...) |
+| 10 | Build failed (composer, rsync, zip) |
+| 11 | Validation failed (headers, readme, version mismatch, forbidden files) |
+| 20 | Plugin Check errors (or warnings with `--strict`) |
+| 21 | Temp site setup or plugin activation failed |
+| 22 | `wp mmwp self-test` failed |
+| 30 | `deploy-wporg` refused: no passing `plugin-check.json` for this slug and version |
+| 31 | SVN failure or wordpress.org unreachable |
+| 32 | Plugin not approved yet and `--fail-if-unapproved` set |
+| 40 | GitHub API failure or missing `GITHUB_TOKEN` |
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+## What `build` validates
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- `<slug>.php` exists; headers `Text Domain` == slug, `Requires PHP`, `Requires at least`, `License` (GPL), `Version`.
+- `readme.txt` exists with `Stable tag` and `Tested up to`; header `Version` == readme `Stable tag`.
+- The zip contains no `.git`, `node_modules`, `tests`, `phpunit*`, `phpcs*`, `phpstan*`, `.gitlab-ci.yml`,
+  `.wordpress-org`, `.env*`, `*.log`; `composer.lock` only if `vendor/` ships. Inside `vendor/` only the
+  secret-like patterns apply (third-party packages legitimately ship tests).
+- `.distignore` (rsync exclude syntax) is required and is itself never shipped.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Local usage (DDEV)
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+ddev composer require --dev mammothwp/wp-release
+ddev exec vendor/bin/mmwp-release build
+ddev exec vendor/bin/mmwp-release check            # add --strict, --self-test, --keep
+ddev exec vendor/bin/mmwp-release status
+ddev exec vendor/bin/mmwp-release deploy-wporg --dry-run
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Use `--db=mysql` with `MMWP_DB_HOST=db MMWP_DB_USER=db MMWP_DB_PASS=db` to reuse DDEV's database service.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## CI
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Plugins get these jobs through `mammothwp/ci-templates` (job and file names there may differ; the commands are what
+matters). The jobs boil down to:
+
+```yaml
+stages: [build, check, release]
+
+mmwp-build:
+  stage: build
+  script: [vendor/bin/mmwp-release build]
+  artifacts: { paths: ["*.zip", "dist/"] }
+
+mmwp-check:
+  stage: check
+  script: [vendor/bin/mmwp-release check]
+  artifacts: { when: always, paths: [plugin-check.json, plugin-check.txt] }
+
+mmwp-release:
+  stage: release
+  rules: [{ if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH }]
+  script:
+    - vendor/bin/mmwp-release deploy-wporg
+    - vendor/bin/mmwp-release release-github
+```
+
+Required CI variables (masked, protected): `WPORG_USERNAME`, `WPORG_PASSWORD`, `GITHUB_TOKEN`; optional `MMWP_*`
+as above. Because every release command is idempotent, the release job can run on every push to `main`.
+See [docs/ci.md](docs/ci.md) and [docs/release-model.md](docs/release-model.md).
+
+## Development
+
+```bash
+composer install
+vendor/bin/phpcs && vendor/bin/phpstan analyse && vendor/bin/phpunit --testsuite unit
+vendor/bin/phpunit --testsuite integration   # real build + check; needs wp-cli, network and pdo_sqlite
+```
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+GPL-2.0-or-later. Support: info@mammothwp.com · <https://mammothwp.com>

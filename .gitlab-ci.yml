@@ -1,0 +1,50 @@
+# CI for mammothwp/wp-release itself. No release jobs here: the package is consumed from Packagist (dev-main).
+image: registry.gitlab.motivar.io/motivar/ci/unified:latest
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - lint
+  - test
+
+variables:
+  COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
+
+cache:
+  key: composer-$CI_COMMIT_REF_SLUG
+  paths:
+    - .composer-cache/
+
+.install: &install
+  - composer install --no-interaction --no-progress --prefer-dist
+
+phpcs:
+  stage: lint
+  before_script: *install
+  script:
+    - vendor/bin/phpcs
+
+phpstan:
+  stage: lint
+  before_script: *install
+  script:
+    - vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
+phpunit:
+  stage: test
+  before_script: *install
+  script:
+    - vendor/bin/phpunit --testsuite unit
+
+# Runs build + check for real against the fixture plugins: needs wp-cli, rsync, zip, unzip, curl,
+# network access and PHP pdo_sqlite. Skips are failures here so a broken image cannot go green silently.
+integration:
+  stage: test
+  before_script:
+    - *install
+    - command -v wp >/dev/null || { curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x /usr/local/bin/wp; }
+  script:
+    - vendor/bin/phpunit --testsuite integration --fail-on-skipped
