@@ -1,0 +1,7 @@
+.scratch/
+vendor/
+dist/
+*.zip
+.phpunit.result.cache
+.phpunit.cache/
+composer.lock
