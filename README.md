@@ -1,4 +1,15 @@
-# mammothwp/wp-release
+<h1 align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+  <img alt="Mammoth WP Release — Build, Plugin-Check and ship WordPress plugins from one command." src="docs/assets/banner-light.svg" width="100%">
+</picture>
+</h1>
+
+<p align="center">
+  <a href="https://packagist.org/packages/mammothwp/wp-release"><img alt="Packagist: dev-main" src="https://img.shields.io/packagist/v/mammothwp/wp-release?include_prereleases&label=packagist"></a>
+  <a href="https://packagist.org/packages/mammothwp/wp-release"><img alt="License: GPL-2.0-or-later" src="https://img.shields.io/packagist/l/mammothwp/wp-release"></a>
+  <a href="composer.json"><img alt="PHP 8.1 or newer" src="https://img.shields.io/packagist/php-v/mammothwp/wp-release?label=php"></a>
+</p>
 
 Prepare, verify and ship a Mammoth WP plugin release to **wordpress.org** (SVN) and **GitHub Releases**.
 One PHP CLI, `mmwp-release`, that behaves identically in DDEV and in GitLab CI.
@@ -6,6 +17,13 @@ One PHP CLI, `mmwp-release`, that behaves identically in DDEV and in GitLab CI.
 **Release model: a version bump on `main` is the release.** There are no git tags. Every command compares the
 plugin's own `Version` header with what is already published and does nothing when it is already out, so the
 whole pipeline is safe to run on every push to `main`.
+
+## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/diagram-dark.svg">
+  <img alt="One mmwp-release command builds a plugin zip, runs Plugin Check on it and ships it to wordpress.org and GitHub Releases; an already published version is skipped." src="docs/assets/diagram-light.svg" width="100%">
+</picture>
 
 ## Install
 
