@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MammothWP\WPRelease\Config;
 
+use MammothWP\WPRelease\Check\AllowList;
 use MammothWP\WPRelease\Exception\ExitCode;
 use MammothWP\WPRelease\Exception\ReleaseException;
 use MammothWP\WPRelease\Plugin\PluginReader;
@@ -67,7 +68,8 @@ final class ConfigLoader
             keep: (bool) ($options['keep'] ?? false),
             failIfUnapproved: (bool) ($options['fail-if-unapproved'] ?? false) || self::bool($env['MMWP_FAIL_IF_UNAPPROVED'] ?? null),
             githubOwner: $this->firstString([$env['MMWP_GITHUB_OWNER'] ?? null]) ?? 'mammothwp',
-            githubRepo: $this->firstString([$env['MMWP_GITHUB_REPO'] ?? null, $file['github_repo'] ?? null]) ?? ''
+            githubRepo: $this->firstString([$env['MMWP_GITHUB_REPO'] ?? null, $file['github_repo'] ?? null]) ?? '',
+            allow: $this->allowRules($options, $env, $file)
         );
     }
 
@@ -150,6 +152,26 @@ final class ConfigLoader
             }
         }
         return null;
+    }
+
+    /**
+     * Merge allow regexes from mmwp-release.json, MMWP_PCP_ALLOW and --allow (validated).
+     *
+     * @param array<string, mixed>  $options CLI options.
+     * @param array<string, string> $env     Environment.
+     * @param array<string, mixed>  $file    mmwp-release.json data.
+     * @return list<string>
+     */
+    private function allowRules(array $options, array $env, array $file): array
+    {
+        $rules = [
+            ...$this->stringList($file['allow'] ?? []),
+            ...AllowList::splitEnv($env['MMWP_PCP_ALLOW'] ?? null),
+            ...$this->stringList($options['allow'] ?? []),
+        ];
+        $rules = array_values(array_unique(array_filter($rules, static fn (string $r): bool => trim($r) !== '')));
+        new AllowList($rules);
+        return $rules;
     }
 
     /**

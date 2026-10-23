@@ -1,0 +1,5 @@
+FILE: mammothwp-acceptance-logs.php
+[{"line": 0, "column": 0, "type": "WARNING", "code": "trademarked_term", "message": "The plugin name includes a restricted term. Your chosen plugin name - \"MammothWP Acceptance Logs\" - contains the restricted term \"wp\" which cannot be used at all in your plugin name.", "docs": ""}, {"line": 0, "column": 0, "type": "WARNING", "code": "trademarked_term", "message": "The plugin slug includes a restricted term. Your chosen plugin slug - \"mammothwp-acceptance-logs\" - contains the restricted term \"wp\" which cannot be used within your plugin slug.", "docs": ""}]
+
+FILE: readme.txt
+[{"line": 0, "column": 0, "type": "WARNING", "code": "trademarked_term", "message": "The plugin name includes a restricted term. Your chosen plugin name - \"MammothWP Acceptance Logs\" - contains the restricted term \"wp\" which cannot be used at all in your plugin name.", "docs": ""}]

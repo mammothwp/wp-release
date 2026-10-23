@@ -27,6 +27,7 @@ final class Config
      * @param bool         $failIfUnapproved Exit 32 when the plugin is not on wordpress.org yet.
      * @param string       $githubOwner      GitHub organisation/user.
      * @param string       $githubRepo       GitHub repository name.
+     * @param list<string> $allow            Plugin Check allow-list regexes (WARNINGs only).
      */
     public function __construct(
         public readonly string $path,
@@ -45,7 +46,8 @@ final class Config
         public readonly bool $keep = false,
         public readonly bool $failIfUnapproved = false,
         public readonly string $githubOwner = 'mammothwp',
-        public readonly string $githubRepo = ''
+        public readonly string $githubRepo = '',
+        public readonly array $allow = []
     ) {
     }
 
