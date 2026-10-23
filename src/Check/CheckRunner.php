@@ -99,7 +99,7 @@ class CheckRunner
             throw new ReleaseException("wp plugin check failed to run:\n" . $this->reporter->mask($output->output()), ExitCode::SITE_SETUP);
         }
         $this->debugTable($config);
-        $result = new CheckResult($config->slug, $version, $config->strict, $findings);
+        $result = new CheckResult($config->slug, $version, $config->strict, $findings, new AllowList($config->allow));
         $this->writeReports($config, $result);
         $this->assertPassed($result);
         return $result;
@@ -142,7 +142,10 @@ class CheckRunner
     private function assertPassed(CheckResult $result): void
     {
         $summary = $result->summary();
-        $this->reporter->info(sprintf('Plugin Check: %d error(s), %d warning(s)', $summary->errors(), $summary->warnings()));
+        $this->reporter->info($summary->countsLine());
+        foreach ($summary->allowed() as $a) {
+            $this->reporter->info(ReportSummary::allowedLine($a['finding'], $a['rule']));
+        }
         foreach ($summary->byCode() as $key => $count) {
             $this->reporter->info(sprintf('  %4d  %s', $count, $key));
         }

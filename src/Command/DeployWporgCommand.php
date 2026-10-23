@@ -24,7 +24,8 @@ final class DeployWporgCommand extends AbstractCommand
     {
         $command
             ->addOption('fail-if-unapproved', null, InputOption::VALUE_NONE, 'Exit 32 when the plugin has no wordpress.org SVN repository yet')
-            ->addOption('strict', null, InputOption::VALUE_NONE, 'Also require 0 warnings in plugin-check.json');
+            ->addOption('strict', null, InputOption::VALUE_NONE, 'Also require 0 warnings in plugin-check.json')
+            ->addOption('allow', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Allow Plugin Check WARNINGs matching this regex when re-checking; repeatable (MMWP_PCP_ALLOW)');
     }
 
     /**

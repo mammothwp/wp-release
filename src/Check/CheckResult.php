@@ -14,12 +14,14 @@ final class CheckResult
      * @param string        $version  Plugin version that was checked.
      * @param bool          $strict   Whether warnings counted as failures.
      * @param list<Finding> $findings Findings.
+     * @param AllowList     $allow    Allow-list.
      */
     public function __construct(
         public readonly string $slug,
         public readonly string $version,
         public readonly bool $strict,
-        public readonly array $findings
+        public readonly array $findings,
+        public readonly AllowList $allow = new AllowList()
     ) {
     }
 
@@ -30,7 +32,7 @@ final class CheckResult
      */
     public function summary(): ReportSummary
     {
-        return new ReportSummary($this->findings);
+        return new ReportSummary($this->findings, $this->allow);
     }
 
     /**
@@ -57,6 +59,11 @@ final class CheckResult
             'strict' => $this->strict,
             'errors' => $summary->errors(),
             'warnings' => $summary->warnings(),
+            'allowed' => count($summary->allowed()),
+            'allowed_findings' => array_map(
+                static fn (array $a): array => $a['finding']->toArray() + ['rule' => $a['rule']],
+                $summary->allowed()
+            ),
             'by_code' => $summary->byCode(),
             'findings' => array_map(static fn (Finding $f): array => $f->toArray(), $this->findings),
         ];

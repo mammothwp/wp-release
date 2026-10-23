@@ -65,7 +65,8 @@ external command that is run, go to stderr.
 | `--slug=<slug>` | Plugin slug (see configuration). |
 
 Command specific: `check` / `all`: `--strict`, `--self-test`, `--keep`, `--db=sqlite|mysql`;
-`deploy-wporg` / `all`: `--fail-if-unapproved`; `deploy-wporg`: `--strict`.
+`deploy-wporg` / `all`: `--fail-if-unapproved`; `deploy-wporg`: `--strict`;
+`check` / `all` / `deploy-wporg`: `--allow=<regex>` (repeatable, see [Plugin Check allow-list](#plugin-check-allow-list)).
 
 ## Configuration
 
@@ -82,14 +83,39 @@ Precedence: CLI flag > `MMWP_*` environment > `mmwp-release.json` > auto-detecti
   "php_min": "7.4",
   "wp_version": "6.8",
   "strict": false,
+  "allow": [],
   "excludes": ["*.psd", "docs/*"],
   "github_repo": "my-plugin"
 }
 ```
 
 `php_min`: the `Requires PHP` header must be at least this. `wp_version`: WordPress version of the check site
-(overridden by `WP_VERSION`). `strict`: same as `MMWP_PCP_STRICT`. `excludes`: extra forbidden-file patterns
+(overridden by `WP_VERSION`). `strict`: same as `MMWP_PCP_STRICT`. `allow`: same as `MMWP_PCP_ALLOW` (array of regexes). `excludes`: extra forbidden-file patterns
 (`fnmatch`, matched against each path and file name in the zip).
+
+### Plugin Check allow-list
+
+Strict mode fails on any Plugin Check warning. A narrow allow-list lets known, reviewer-approved warnings through:
+`--allow=<regex>` (repeatable), `MMWP_PCP_ALLOW` (newline- or `||`-separated) and `allow` in `mmwp-release.json` are merged.
+Nothing is allowed by default.
+
+- A finding is allowed only if it is a **WARNING** and the regex matches the string `<code>: <message>`. **ERRORs can never be allowed.**
+- Regexes are bare PCRE bodies without delimiters, matched with the `u` flag; use inline flags such as `(?i)`. An invalid regex exits with code 2.
+- Allowed findings are listed as `ALLOWED: <code>: <message> (rule: <regex>)` in `plugin-check.txt` and on the console, the counts read
+  `N error(s), M warning(s), K allowed`, and `plugin-check.json` gets `allowed` and `allowed_findings`. `warnings` excludes allowed
+  findings, so the strict exit-20 decision and the `deploy-wporg` gate ignore them.
+
+Recommended rule for the "MammothWP" brand: wordpress.org reviewers approve "BrandWP" names, but Plugin Check warns
+`trademarked_term` for the "wp" in "MammothWP". This allows only that term, only when the quoted name/slug contains `mammothwp`
+(not `wordpress`, `woocommerce`, or other brands):
+
+```
+(?i)^trademarked_term: (?=.*(?<![a-z0-9])mammothwp)(?=.*restricted term \W?wp\W)
+```
+
+```sh
+mmwp-release check --strict --allow='(?i)^trademarked_term: (?=.*(?<![a-z0-9])mammothwp)(?=.*restricted term \W?wp\W)'
+```
 
 ### Environment variables
 
@@ -98,6 +124,7 @@ Precedence: CLI flag > `MMWP_*` environment > `mmwp-release.json` > auto-detecti
 | `MMWP_SLUG` | all | Plugin slug. |
 | `MMWP_DEBUG` | all | `true` = same as `--debug-mode`. |
 | `MMWP_PCP_STRICT` | check, deploy-wporg | `true` = fail on Plugin Check warnings too. |
+| `MMWP_PCP_ALLOW` | check, deploy-wporg | Plugin Check allow-list regexes, newline- or `||`-separated (see below). |
 | `MMWP_SELF_TEST` | check | `true` = same as `--self-test`. |
 | `MMWP_DB` | check | `sqlite` (default) or `mysql`. |
 | `MMWP_DB_HOST` / `MMWP_DB_USER` / `MMWP_DB_PASS` / `MMWP_DB_NAME` | check | MySQL connection (name defaults to a random `mmwp_check_*`, dropped afterwards). |

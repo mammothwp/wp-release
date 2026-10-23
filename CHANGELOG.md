@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add a narrow Plugin Check allow-list for strict mode: `--allow=<regex>` (repeatable), `MMWP_PCP_ALLOW` and `allow` in
+  `mmwp-release.json` for `check`, `all` and `deploy-wporg`. Only WARNINGs matching `<code>: <message>` can be allowed (ERRORs never),
+  nothing is allowed by default. Allowed findings are reported as `ALLOWED: ...` and counted (`N error(s), M warning(s), K allowed`)
+  and ignored by the exit-20 decision and the deploy gate. README documents a recommended `trademarked_term` regex for "MammothWP".
+
 - Initial implementation of `mammothwp/wp-release`: `build`, `check`, `deploy-wporg`, `release-github`, `status` and `all`
   commands, idempotent release model derived from the plugin version (no git tags), fixtures, unit and integration tests,
   GitLab CI and documentation.
