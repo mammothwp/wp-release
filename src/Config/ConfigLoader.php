@@ -69,7 +69,8 @@ final class ConfigLoader
             failIfUnapproved: (bool) ($options['fail-if-unapproved'] ?? false) || self::bool($env['MMWP_FAIL_IF_UNAPPROVED'] ?? null),
             githubOwner: $this->firstString([$env['MMWP_GITHUB_OWNER'] ?? null]) ?? 'mammothwp',
             githubRepo: $this->firstString([$env['MMWP_GITHUB_REPO'] ?? null, $file['github_repo'] ?? null]) ?? '',
-            allow: $this->allowRules($options, $env, $file)
+            allow: $this->allowRules($options, $env, $file),
+            deps: $this->depSlugs($options, $env)
         );
     }
 
@@ -172,6 +173,19 @@ final class ConfigLoader
         $rules = array_values(array_unique(array_filter($rules, static fn (string $r): bool => trim($r) !== '')));
         new AllowList($rules);
         return $rules;
+    }
+
+    /**
+     * Dependency slugs: --deps overrides MMWP_BROWSER_DEPS (an empty --deps falls back to the env).
+     *
+     * @param array<string, mixed>  $options CLI options.
+     * @param array<string, string> $env     Environment.
+     * @return list<string>
+     */
+    private function depSlugs(array $options, array $env): array
+    {
+        $cli = DependencyList::parse(is_string($options['deps'] ?? null) ? $options['deps'] : null);
+        return $cli !== [] ? $cli : DependencyList::parse($env['MMWP_BROWSER_DEPS'] ?? null);
     }
 
     /**

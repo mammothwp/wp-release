@@ -17,6 +17,7 @@ final class HeaderParser
         'requires at least',
         'license',
         'description',
+        'requires plugins',
     ];
 
     /**
