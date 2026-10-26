@@ -28,6 +28,7 @@ final class Config
      * @param string       $githubOwner      GitHub organisation/user.
      * @param string       $githubRepo       GitHub repository name.
      * @param list<string> $allow            Plugin Check allow-list regexes (WARNINGs only).
+     * @param list<string> $deps             wordpress.org slugs installed and activated before the plugin under test.
      */
     public function __construct(
         public readonly string $path,
@@ -47,7 +48,8 @@ final class Config
         public readonly bool $failIfUnapproved = false,
         public readonly string $githubOwner = 'mammothwp',
         public readonly string $githubRepo = '',
-        public readonly array $allow = []
+        public readonly array $allow = [],
+        public readonly array $deps = []
     ) {
     }
 

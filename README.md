@@ -64,7 +64,7 @@ external command that is run, go to stderr.
 | `--format=table\|json` | Result format on stdout (default `table`). |
 | `--slug=<slug>` | Plugin slug (see configuration). |
 
-Command specific: `check` / `all`: `--strict`, `--self-test`, `--keep`, `--db=sqlite|mysql`;
+Command specific: `check` / `all`: `--strict`, `--deps=<slugs>` (see [Plugin dependencies](#plugin-dependencies)), `--self-test`, `--keep`, `--db=sqlite|mysql`;
 `deploy-wporg` / `all`: `--fail-if-unapproved`; `deploy-wporg`: `--strict`;
 `check` / `all` / `deploy-wporg`: `--allow=<regex>` (repeatable, see [Plugin Check allow-list](#plugin-check-allow-list)).
 
@@ -92,6 +92,13 @@ Precedence: CLI flag > `MMWP_*` environment > `mmwp-release.json` > auto-detecti
 `php_min`: the `Requires PHP` header must be at least this. `wp_version`: WordPress version of the check site
 (overridden by `WP_VERSION`). `strict`: same as `MMWP_PCP_STRICT`. `allow`: same as `MMWP_PCP_ALLOW` (array of regexes). `excludes`: extra forbidden-file patterns
 (`fnmatch`, matched against each path and file name in the zip).
+
+### Plugin dependencies
+
+Plugins with a `Requires Plugins:` header cannot be activated alone. Set `MMWP_BROWSER_DEPS="woocommerce"` (or `--deps=woocommerce`,
+which overrides the variable) and `check` runs `wp plugin install <slug> --activate` for each slug before activating the plugin under
+test. Plugin Check still checks only the plugin under test. Unset/empty keeps the old behaviour; if the header is present and no
+dependencies are given, `check` fails (exit 2) naming `MMWP_BROWSER_DEPS`.
 
 ### Plugin Check allow-list
 
@@ -125,6 +132,7 @@ mmwp-release check --strict --allow='(?i)^trademarked_term: (?=.*(?<![a-z0-9])ma
 | `MMWP_DEBUG` | all | `true` = same as `--debug-mode`. |
 | `MMWP_PCP_STRICT` | check, deploy-wporg | `true` = fail on Plugin Check warnings too. |
 | `MMWP_PCP_ALLOW` | check, deploy-wporg | Plugin Check allow-list regexes, newline- or `||`-separated (see below). |
+| `MMWP_BROWSER_DEPS` | check | wordpress.org slugs (space/comma separated) installed and activated in the temp site before the plugin; `--deps` overrides it. |
 | `MMWP_SELF_TEST` | check | `true` = same as `--self-test`. |
 | `MMWP_DB` | check | `sqlite` (default) or `mysql`. |
 | `MMWP_DB_HOST` / `MMWP_DB_USER` / `MMWP_DB_PASS` / `MMWP_DB_NAME` | check | MySQL connection (name defaults to a random `mmwp_check_*`, dropped afterwards). |

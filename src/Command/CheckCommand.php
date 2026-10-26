@@ -26,6 +26,7 @@ final class CheckCommand extends AbstractCommand
         $command
             ->addOption('strict', null, InputOption::VALUE_NONE, 'Fail on Plugin Check warnings too (MMWP_PCP_STRICT=true)')
             ->addOption('allow', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Allow Plugin Check WARNINGs matching this regex; repeatable (MMWP_PCP_ALLOW)')
+            ->addOption('deps', null, InputOption::VALUE_REQUIRED, 'wordpress.org slugs (space/comma separated) installed and activated before the plugin; overrides MMWP_BROWSER_DEPS')
             ->addOption('self-test', null, InputOption::VALUE_NONE, 'Also run `wp mmwp self-test <slug>` when provided')
             ->addOption('keep', null, InputOption::VALUE_NONE, 'Keep the temp WordPress site')
             ->addOption('db', null, InputOption::VALUE_REQUIRED, 'sqlite (default) or mysql (MMWP_DB_HOST/USER/PASS/NAME)');

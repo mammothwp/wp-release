@@ -6,6 +6,7 @@ namespace MammothWP\WPRelease\Check;
 
 use MammothWP\WPRelease\Build\Builder;
 use MammothWP\WPRelease\Config\Config;
+use MammothWP\WPRelease\Config\DependencyList;
 use MammothWP\WPRelease\Exception\ExitCode;
 use MammothWP\WPRelease\Exception\ReleaseException;
 use MammothWP\WPRelease\Output\Reporter;
@@ -47,6 +48,7 @@ class CheckRunner
             $this->builder->build($config);
         }
         $version = (string) $this->reader->read($config->path, $config->slug)->version();
+        $this->assertDepsDeclared($config);
         try {
             $this->site->create($config);
             $result = $this->checkInSite($config, $version);
@@ -55,6 +57,29 @@ class CheckRunner
             $this->cleanup($config);
         }
         return $result;
+    }
+
+    /**
+     * Fail early when the plugin declares `Requires Plugins:` but no dependencies were given.
+     *
+     * @param Config $config Config.
+     * @return void
+     */
+    private function assertDepsDeclared(Config $config): void
+    {
+        $required = $this->reader->read($config->path, $config->slug)->headers['requires plugins'] ?? '';
+        if ($required === '' || $config->deps !== []) {
+            return;
+        }
+        throw new ReleaseException(
+            sprintf(
+                'The plugin declares "Requires Plugins: %s" but no dependencies were given. '
+                . 'Set MMWP_BROWSER_DEPS (or --deps) to the wordpress.org slugs, e.g. MMWP_BROWSER_DEPS="%s".',
+                $required,
+                implode(' ', DependencyList::parse($required))
+            ),
+            ExitCode::CONFIG
+        );
     }
 
     /**
@@ -88,6 +113,10 @@ class CheckRunner
     private function checkInSite(Config $config, string $version): CheckResult
     {
         $this->site->wp(['plugin', 'install', 'plugin-check', '--activate'], ExitCode::SITE_SETUP);
+        foreach ($config->deps as $dep) {
+            $this->reporter->info('Installing dependency: ' . $dep);
+            $this->site->wp(['plugin', 'install', $dep, '--activate'], ExitCode::SITE_SETUP);
+        }
         $this->site->unzipPlugin($config->zipPath());
         $activation = $this->site->wpTry(['plugin', 'activate', $config->slug]);
         if (!$activation->isSuccessful()) {
