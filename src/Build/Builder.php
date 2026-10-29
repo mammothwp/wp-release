@@ -25,6 +25,7 @@ class Builder
      * @param PluginValidator $validator Validator.
      * @param Filesystem      $fs        Filesystem helper.
      * @param StageFiles      $stageFiles Decides which files are staged.
+     * @param VendorValidator $vendorValidator Checks runtime dependencies in the zip.
      */
     public function __construct(
         private readonly CommandRunner $runner,
@@ -32,7 +33,8 @@ class Builder
         private readonly PluginReader $reader = new PluginReader(),
         private readonly PluginValidator $validator = new PluginValidator(),
         private readonly Filesystem $fs = new Filesystem(),
-        private readonly StageFiles $stageFiles = new StageFiles()
+        private readonly StageFiles $stageFiles = new StageFiles(),
+        private readonly VendorValidator $vendorValidator = new VendorValidator()
     ) {
     }
 
@@ -50,16 +52,19 @@ class Builder
         if (!is_file($config->path . '/.distignore')) {
             throw new ReleaseException('.distignore is required in the plugin root.', ExitCode::CONFIG);
         }
+        $this->checkDistignore($config);
         $stage = $this->makeTempDir();
         try {
             $this->stage($config, $stage);
             $this->installDependencies($config, $stage);
+            $manifest = $this->readManifest($stage);
             $this->syncDist($config, $stage);
         } finally {
             $this->fs->remove($stage);
         }
         $this->validateDist($config);
         $result = $this->zip($config);
+        $this->validateVendor($config, $result, $manifest);
         $this->validateZip($config, $result);
         $this->reporter->info(sprintf('Built %s (%s, %d files)', basename($result->zipPath), $result->toArray()['zip_size'], $result->fileCount));
         return $result;
@@ -216,6 +221,77 @@ class Builder
         }
         $shown = implode("\n - ", array_slice($forbidden, 0, 20));
         throw new ReleaseException("Forbidden files found in the zip (hidden files, phars or .distignore targets):\n - " . $shown, ExitCode::VALIDATION);
+    }
+
+    /**
+     * Warn (fail when strict) about unanchored .distignore entries that also strip files inside vendor packages.
+     *
+     * @param Config $config Config.
+     * @return void
+     */
+    private function checkDistignore(Config $config): void
+    {
+        $warnings = $this->vendorValidator->distignoreWarnings((string) file_get_contents($config->path . '/.distignore'));
+        foreach ($warnings as $warning) {
+            $this->reporter->info('WARNING: ' . $warning);
+        }
+        if ($warnings !== [] && $config->strict) {
+            throw new ReleaseException("Strict mode: .distignore would strip files inside vendor/:\n - " . implode("\n - ", $warnings), ExitCode::VALIDATION);
+        }
+    }
+
+    /**
+     * Read the staged composer.json and composer.lock (after the install, so the lock always exists).
+     *
+     * @param string $stage Temp dir.
+     * @return array{composer: array<string, mixed>|null, lock: array<string, mixed>|null}
+     */
+    private function readManifest(string $stage): array
+    {
+        return ['composer' => $this->readJson($stage . '/composer.json'), 'lock' => $this->readJson($stage . '/composer.lock')];
+    }
+
+    /**
+     * Decode a JSON file to an array; null when missing or invalid.
+     *
+     * @param string $file File path.
+     * @return array<string, mixed>|null
+     */
+    private function readJson(string $file): ?array
+    {
+        if (!is_file($file)) {
+            return null;
+        }
+        $data = json_decode((string) file_get_contents($file), true);
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Fail when the zip lacks the runtime Composer dependencies the plugin declares.
+     *
+     * @param Config      $config   Config.
+     * @param BuildResult $result   Build result.
+     * @param array{composer: array<string, mixed>|null, lock: array<string, mixed>|null} $manifest Staged manifests.
+     * @return void
+     */
+    private function validateVendor(Config $config, BuildResult $result, array $manifest): void
+    {
+        if ($manifest['composer'] === null) {
+            return;
+        }
+        $prefix = $config->slug . '/';
+        $relative = array_map(
+            static fn (string $path): string => str_starts_with($path, $prefix) ? substr($path, strlen($prefix)) : $path,
+            $this->listZip($result->zipPath)
+        );
+        $problems = $this->vendorValidator->problems($manifest['composer'], $manifest['lock'], $relative);
+        if ($problems === []) {
+            return;
+        }
+        throw new ReleaseException(
+            "The zip is missing runtime Composer dependencies (check that .distignore does not strip vendor/):\n - " . implode("\n - ", $problems),
+            ExitCode::VALIDATION
+        );
     }
 
     /**

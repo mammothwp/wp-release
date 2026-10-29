@@ -171,6 +171,12 @@ mmwp-release check --strict --allow='(?i)^trademarked_term: (?=.*(?<![a-z0-9])ma
 - Pre-flight (exit 11, offending paths listed, before Plugin Check): the zip contains no hidden file or directory at any
   level (dot-files, dot-dirs, including inside `vendor/`) and no `*.phar`.
 - `.distignore` (rsync exclude syntax) is required and is itself never shipped.
+- Runtime dependencies (exit 11): when `composer.json` `require`s anything besides `php`/`ext-*`/`lib-*`, the zip must contain
+  `vendor/autoload.php`, `vendor/composer/autoload_real.php` and `autoload_classmap.php`, and a `vendor/<name>/` directory for every
+  package in the plugin's `composer.lock` `packages` (non-dev; metapackages skipped). Typical cause: a bare `vendor` line in
+  `.distignore`. Plugin Check does not notice a zip like that.
+- `.distignore` warning (fails the build with `--strict` / `MMWP_PCP_STRICT`): an unanchored entry (no leading `/`) named `tests`,
+  `docs`, `bin`, `README.md`, `composer.lock` or `vendor` also strips those files inside `vendor/` packages; write `/tests` etc.
 
 ## What `build` copies
 
