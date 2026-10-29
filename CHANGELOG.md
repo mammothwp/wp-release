@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `build` now validates that the zip ships the plugin's runtime Composer dependencies and fails with exit 11 and a clear message when
+  `vendor/autoload.php`, `vendor/composer/autoload_*.php` or the `vendor/<package>/` directory of any package in `composer.lock`
+  (non-dev) is missing (e.g. a bare `vendor` line in `.distignore`). It also warns about unanchored `.distignore` entries
+  (`tests`, `docs`, `bin`, `README.md`, `composer.lock`, `vendor`) that strip files inside vendor packages, and fails on them with
+  `--strict`. Adds `VendorValidator`, fixture plugins (good, vendor-stripping, one missing package) and tests. No version bump:
+  the package is published as `dev-main` without version tags or a version field.
+
 - `check` can now test plugins with a `Requires Plugins:` header: dependencies from `MMWP_BROWSER_DEPS` (space/comma separated
   wordpress.org slugs) or `--deps=<slugs>` (overrides the variable) are installed and activated before the plugin under test.
   Without deps, a plugin declaring `Requires Plugins:` fails early with a message naming `MMWP_BROWSER_DEPS`. Plugin Check still

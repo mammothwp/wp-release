@@ -104,6 +104,37 @@ final class BuilderStagingTest extends TestCase
     }
 
     /**
+     * Verifies: a bare "vendor" in .distignore fails the build with exit 11 naming the missing dependency; strict warns first.
+     * @return void
+     */
+    public function testBuildFailsWhenDistignoreStripsVendor(): void
+    {
+        mkdir($this->work . '/libs/lib', 0777, true);
+        file_put_contents($this->work . '/libs/lib/composer.json', '{"name":"acme/lib","version":"1.0.0","autoload":{"classmap":["."]}}');
+        file_put_contents($this->work . '/libs/lib/Lib.php', "<?php\nclass Lib {}\n");
+        file_put_contents(
+            $this->work . '/composer.json',
+            '{"name":"x/y","require":{"acme/lib":"*"},"repositories":[{"type":"path","url":"libs/lib","options":{"symlink":false}}]}'
+        );
+        file_put_contents($this->work . '/.distignore', "vendor\n");
+        try {
+            $this->buildEntries();
+            self::fail('Expected a ReleaseException.');
+        } catch (ReleaseException $e) {
+            self::assertSame(ExitCode::VALIDATION, $e->getCode());
+            self::assertStringContainsString('vendor/autoload.php is missing', $e->getMessage());
+            self::assertStringContainsString('"acme/lib"', $e->getMessage());
+        }
+        $reporter = new Reporter(new BufferedOutput(), new BufferedOutput());
+        try {
+            (new Builder(new Runner($reporter), $reporter))->build(new Config($this->work, 'mmwp-fixture-plugin', strict: true));
+            self::fail('Expected a ReleaseException.');
+        } catch (ReleaseException $e) {
+            self::assertStringContainsString('Strict mode', $e->getMessage());
+        }
+    }
+
+    /**
      * Create the files CI leaves in the project dir.
      * @return void
      */
