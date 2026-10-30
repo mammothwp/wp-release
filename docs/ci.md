@@ -29,5 +29,5 @@ release notes, and publishes nothing.
 
 ## This repository's pipeline
 
-`.gitlab-ci.yml` runs phpcs, phpstan (level 8), the unit tests and the integration tests (real `build` + `check`
+The CI config runs phpcs, phpstan (level 8), the unit tests and the integration tests (real `build` + `check`
 against `tests/fixtures/`; skipped tests fail the job in CI) on merge requests and `main`.

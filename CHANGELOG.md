@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-10-30
+
+### Changed
+
+- Docs cleanup: CI wording made provider-neutral in README and docs.
+- Tests: `VendorValidatorTest` builds the fixture plugins' `vendor/` stubs at runtime in a temp dir instead of relying on committed (ignored) `vendor/` trees.
+
 ## [1.0.0] - 2026-10-30
 
 - First tagged release (`v1.0.0`); `composer require --dev mammothwp/wp-release` works without `@dev`. Adds `LICENSE` (GPL-2.0) and `authors` metadata; scrubbed internal references for the public mirror.
