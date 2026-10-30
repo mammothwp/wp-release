@@ -1,7 +1,7 @@
 # PLAN — mammothwp/wp-release
 
 Composer package providing `bin/mmwp-release`: prepare, verify and ship a Mammoth WP plugin to
-wordpress.org (SVN) and GitHub Releases. Identical locally (DDEV) and in GitLab CI.
+wordpress.org (SVN) and GitHub Releases. Identical locally and in CI.
 
 ## Principles
 - Release state is derived, never tagged: plugin header `Version` vs. what is already published.

@@ -1,4 +1,4 @@
-# CI for mammothwp/wp-release itself. No release jobs here: the package is consumed from Packagist (dev-main).
+# CI for mammothwp/wp-release itself. No release jobs here: the package is consumed from Packagist (tagged vX.Y.Z releases).
 default:
   tags: [docker]
   image: composer:2
