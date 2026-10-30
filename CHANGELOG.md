@@ -5,6 +5,7 @@
 ### Changed
 
 - Docs cleanup: CI wording made provider-neutral in README and docs.
+- Tests: `VendorValidatorTest` builds the fixture plugins' `vendor/` stubs at runtime in a temp dir instead of relying on committed (ignored) `vendor/` trees.
 
 ## [1.0.0] - 2026-10-30
 

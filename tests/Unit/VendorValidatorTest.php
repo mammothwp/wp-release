@@ -16,6 +16,7 @@ use Symfony\Component\Process\Process;
 final class VendorValidatorTest extends TestCase
 {
     private string $out = '';
+    private string $src = '';
 
     /**
      * Set up.
@@ -24,6 +25,7 @@ final class VendorValidatorTest extends TestCase
     protected function setUp(): void
     {
         $this->out = sys_get_temp_dir() . '/mmwp-vv-' . bin2hex(random_bytes(4));
+        $this->src = $this->out . '-src';
     }
 
     /**
@@ -32,7 +34,7 @@ final class VendorValidatorTest extends TestCase
      */
     protected function tearDown(): void
     {
-        (new Filesystem())->remove($this->out);
+        (new Filesystem())->remove([$this->out, $this->src]);
     }
 
     /**
@@ -127,6 +129,32 @@ final class VendorValidatorTest extends TestCase
     }
 
     /**
+     * Copy a fixture into a temp dir and stub the vendor/ tree its composer.lock describes.
+     *
+     * The "missing-package" fixture intentionally lacks the acme/other directory.
+     *
+     * @param string $name Fixture name.
+     * @return string Staged plugin directory.
+     */
+    private function stage(string $name): string
+    {
+        $fs = new Filesystem();
+        $dir = $this->src . '/' . $name;
+        $fs->mirror($this->fixture($name), $dir);
+        $lock = json_decode((string) file_get_contents($dir . '/composer.lock'), true);
+        $fs->dumpFile($dir . '/vendor/autoload.php', "<?php\n");
+        $fs->dumpFile($dir . '/vendor/composer/autoload_real.php', "<?php\n");
+        $fs->dumpFile($dir . '/vendor/composer/autoload_classmap.php', "<?php\n");
+        foreach ($lock['packages'] ?? [] as $package) {
+            if ($name === 'missing-package' && $package['name'] === 'acme/other') {
+                continue;
+            }
+            $fs->dumpFile($dir . '/vendor/' . $package['name'] . '/composer.json', '{}');
+        }
+        return $dir;
+    }
+
+    /**
      * Sync a fixture with its .distignore and validate the resulting tree.
      *
      * @param string $name Fixture name.
@@ -137,7 +165,7 @@ final class VendorValidatorTest extends TestCase
         if ((new ExecutableFinder())->find('rsync') === null) {
             self::markTestSkipped('rsync is not available.');
         }
-        $src = $this->fixture($name);
+        $src = $this->stage($name);
         (new Process(['rsync', '-a', '--exclude-from=' . $src . '/.distignore', $src . '/', $this->out . '/']))->mustRun();
         $paths = [];
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->out, \FilesystemIterator::SKIP_DOTS));
