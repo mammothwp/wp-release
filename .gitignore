@@ -9,3 +9,4 @@ composer.lock
 # Fixture plugins carry installed vendor/ trees and locks on purpose.
 !/tests/fixtures/**/vendor/
 !/tests/fixtures/**/composer.lock
+/CLAUDE.md

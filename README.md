@@ -36,7 +36,7 @@ This library is released as tagged versions (`vX.Y.Z`) on Packagist and mirrored
 <https://github.com/mammothwp/wp-release>. Requires PHP >= 8.1 and these tools on `PATH`:
 `composer`, `rsync`, `zip`, `unzip` (build); `wp` (WP-CLI) and `curl` (check, HTTP); `svn` (deploy-wporg).
 For `check` with the default SQLite database PHP also needs `pdo_sqlite`.
-In GitLab CI (see [docs/ci.md](docs/ci.md)) everything runs on the `composer:2` image (Alpine) plus apk packages, e.g.
+In CI (see [docs/ci.md](docs/ci.md)) everything runs on the `composer:2` image (Alpine) plus apk packages, e.g.
 `apk add --no-cache rsync zip unzip curl bash`, and `subversion` in the job that runs `deploy-wporg`.
 
 ## Commands
