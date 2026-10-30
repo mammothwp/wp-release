@@ -3,6 +3,7 @@
 ## [1.0.0] - 2026-10-30
 
 - First tagged release (`v1.0.0`); `composer require --dev mammothwp/wp-release` works without `@dev`. Adds `LICENSE` (GPL-2.0) and `authors` metadata; scrubbed internal references for the public mirror.
+- CI: the `integration` job only installs PHP extensions that are not already loaded, fixing the `pdo_sqlite` build failure on images that bundle it.
 - `build` now validates that the zip ships the plugin's runtime Composer dependencies and fails with exit 11 and a clear message when
   `vendor/autoload.php`, `vendor/composer/autoload_*.php` or the `vendor/<package>/` directory of any package in `composer.lock`
   (non-dev) is missing (e.g. a bare `vendor` line in `.distignore`). It also warns about unanchored `.distignore` entries
