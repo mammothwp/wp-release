@@ -4,6 +4,9 @@
     "type": "library",
     "license": "GPL-2.0-or-later",
     "homepage": "https://mammothwp.com",
+    "authors": [
+        {"name": "Mammoth WP", "email": "info@mammothwp.com", "homepage": "https://mammothwp.com"}
+    ],
     "support": {
         "email": "info@mammothwp.com",
         "source": "https://github.com/mammothwp/wp-release"

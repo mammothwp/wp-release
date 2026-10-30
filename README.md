@@ -6,15 +6,15 @@
 </h1>
 
 <p align="center">
-  <a href="https://packagist.org/packages/mammothwp/wp-release"><img alt="Packagist: dev-main" src="https://img.shields.io/packagist/v/mammothwp/wp-release?include_prereleases&label=packagist"></a>
+  <a href="https://packagist.org/packages/mammothwp/wp-release"><img alt="Packagist" src="https://img.shields.io/packagist/v/mammothwp/wp-release?include_prereleases&label=packagist"></a>
   <a href="https://packagist.org/packages/mammothwp/wp-release"><img alt="License: GPL-2.0-or-later" src="https://img.shields.io/packagist/l/mammothwp/wp-release"></a>
   <a href="composer.json"><img alt="PHP 8.1 or newer" src="https://img.shields.io/packagist/php-v/mammothwp/wp-release?label=php"></a>
 </p>
 
 Prepare, verify and ship a Mammoth WP plugin release to **wordpress.org** (SVN) and **GitHub Releases**.
-One PHP CLI, `mmwp-release`, that behaves identically in DDEV and in GitLab CI.
+One PHP CLI, `mmwp-release`, that behaves identically locally and in CI.
 
-**Release model: a version bump on `main` is the release.** There are no git tags. Every command compares the
+**Release model: a version bump on `main` is the release.** There are no git tags for plugins. Every command compares the
 plugin's own `Version` header with what is already published and does nothing when it is already out, so the
 whole pipeline is safe to run on every push to `main`.
 
@@ -32,11 +32,11 @@ composer require --dev mammothwp/wp-release
 vendor/bin/mmwp-release --help
 ```
 
-The package is published on Packagist as `dev-main` (no version tags) and mirrored to
+This library is released as tagged versions (`vX.Y.Z`) on Packagist and mirrored to
 <https://github.com/mammothwp/wp-release>. Requires PHP >= 8.1 and these tools on `PATH`:
 `composer`, `rsync`, `zip`, `unzip` (build); `wp` (WP-CLI) and `curl` (check, HTTP); `svn` (deploy-wporg).
 For `check` with the default SQLite database PHP also needs `pdo_sqlite`.
-In GitLab CI everything runs on the `composer:2` image (Alpine) plus apk packages, e.g.
+In GitLab CI (see [docs/ci.md](docs/ci.md)) everything runs on the `composer:2` image (Alpine) plus apk packages, e.g.
 `apk add --no-cache rsync zip unzip curl bash`, and `subversion` in the job that runs `deploy-wporg`.
 
 ## Commands
@@ -186,7 +186,7 @@ never reach the zip, and `.distignore` does not need to know about CI internals.
 minus every dot-file/dot-dir, `*.phar`, `.cache/`, `node_modules`, `dist`, the zip itself and the directory named by
 `MMWP_TOOLS_DIR` (when inside the plugin root).
 
-## Local usage (DDEV)
+## Local usage (DDEV or any local PHP)
 
 ```bash
 ddev composer require --dev mammothwp/wp-release
@@ -196,7 +196,7 @@ ddev exec vendor/bin/mmwp-release status
 ddev exec vendor/bin/mmwp-release deploy-wporg --dry-run
 ```
 
-Use `--db=mysql` with `MMWP_DB_HOST=db MMWP_DB_USER=db MMWP_DB_PASS=db` to reuse DDEV's database service.
+Use `--db=mysql` with `MMWP_DB_HOST=db MMWP_DB_USER=db MMWP_DB_PASS=db` to reuse a local database service such as DDEV's.
 
 ## CI
 
